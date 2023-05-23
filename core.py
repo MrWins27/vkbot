@@ -3,8 +3,12 @@ from datetime import datetime
 import vk_api
 from config import acces_token
 from vk_api.longpoll import VkLongPoll, VkEventType
+from data_store import filter
+
 
 class VkTools():
+    offset = 0
+
     def __init__(self, acces_token):
         self.api = vk_api.VkApi(token=acces_token)
 
@@ -14,6 +18,7 @@ class VkTools():
             if event.type == VkEventType.MESSAGE_NEW and event.to_me:
                 command = event.text.lower()
         bdate = 1
+
     def get_profile_info(self, user_id):
 
         info, = self.api.method('users.get',
@@ -23,12 +28,11 @@ class VkTools():
                                 )
         user_info = {'name': info['first_name'] + ' ' + info['last_name'],
                      'id': info['id'],
-                     'bdate': info['bdate'] if 'bdate' in info else int(input("Введите дату рождения")),
-                     'home_town': info['home_town'] if 'home_town' in info else input("Введите название вашего города").capitalize(),
+                     'bdate': info['bdate'] if 'bdate' in info else None,
+                     'home_town': info['home_town'] if 'home_town' in info else None,
                      'sex': info['sex'],
-                     'city': info['city']['id'] if 'city' in info else input("Введите название вашего города").capitalize()
+                     'city': info['city']['id'] if 'city' in info else None
                      }
-
         return user_info
 
     def search_users(self, params):
@@ -40,10 +44,15 @@ class VkTools():
         age = curent_year - user_year
         age_from = age - 5
         age_to = age + 5
+        offset = self.offset
+        count = 10
+
+        profile_id = params['id']
+        viewed = filter(profile_id)
 
         users = self.api.method('users.search',
-                                {'count': 10,
-                                 'offset': 0,
+                                {'count': count,
+                                 'offset': offset,
                                  'sex': sex,
                                  'age_from': age_from,
                                  'age_to': age_to,
@@ -52,6 +61,7 @@ class VkTools():
                                  'is_closed': False
                                  }
                                 )
+
         try:
             users = users['items']
         except KeyError:
@@ -60,12 +70,13 @@ class VkTools():
         res = []
 
         for user in users:
-            if user['is_closed'] == False:
-                res.append({'id': user['id'],
-                            'name': user['first_name'] + ' ' + user['last_name']
-                            }
-                           )
-
+            if user['id'] not in viewed:
+                if user['is_closed'] == False:
+                    res.append({'id': user['id'],
+                                'name': user['first_name'] + ' ' + user['last_name']
+                                }
+                               )
+        self.offset += count
         return res
 
     def get_photos(self, user_id):
@@ -92,16 +103,8 @@ class VkTools():
 
         res.sort(key=lambda x: x['likes'] + x['comments'], reverse=True)
 
-
         return res
 
 
 if __name__ == '__main__':
     bot = VkTools(acces_token)
-    params = bot.get_profile_info(37100834)
-    users = bot.search_users(params)
-    # print(bot.get_photos(users[1]['id']))
-    # print(users)
-# print(bot.get_photos(303980050))
-# print(params)
-
