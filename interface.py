@@ -39,9 +39,6 @@ class BotInterface():
                 if command == 'привет' or command == 'начать':
                     self.params = self.api.get_profile_info(event.user_id)
                     self.message_send(event.user_id, f'Приветствую тебя, {self.params["name"]}')
-                    if self.params['city'] is None:
-                        self.message_send(event.user_id, f'Введите город')
-                        self.params['city'] = event.text.lower()
                 elif command == 'поиск':
                     users = self.api.search_users(self.params)
                     if len(users) == 0:

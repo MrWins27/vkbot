@@ -11,6 +11,7 @@ class VkTools():
 
     def __init__(self, acces_token):
         self.api = vk_api.VkApi(token=acces_token)
+        self.user_info = {}
 
     def get_profile_info_request(self):
         longpoll = VkLongPoll(self.interface)
