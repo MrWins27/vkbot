@@ -1,14 +1,15 @@
 from datetime import datetime
 
 import vk_api
-from config import acces_token
 from vk_api.longpoll import VkLongPoll, VkEventType
-from data_store import filter
 
+from config import acces_token
+from data_store import filter
+from vk_api.exceptions import ApiError
 
 class VkTools():
     offset = 0
-
+    bdate = 1
     def __init__(self, acces_token):
         self.api = vk_api.VkApi(token=acces_token)
         self.user_info = {}
@@ -18,15 +19,20 @@ class VkTools():
         for event in longpoll.listen():
             if event.type == VkEventType.MESSAGE_NEW and event.to_me:
                 command = event.text.lower()
-        bdate = 1
+
 
     def get_profile_info(self, user_id):
 
-        info, = self.api.method('users.get',
-                                {'user_id': user_id,
-                                 'fields': 'city,bdate,sex,relation,home_town'
-                                 }
-                                )
+        try:
+            info, = self.api.method('users.get',
+                                    {'user_id': user_id,
+                                     'fields': 'city,bdate,sex,relation,home_town'
+                                     }
+                                    )
+        except ApiError as e:
+            info = {}
+            print(f'error = {e}')
+
         user_info = {'name': info['first_name'] + ' ' + info['last_name'],
                      'id': info['id'],
                      'bdate': info['bdate'] if 'bdate' in info else None,
@@ -79,6 +85,25 @@ class VkTools():
                                )
         self.offset += count
         return res
+
+    def get_city_id(self, answer):
+        city_id = int
+        cities = self.api.method('database.getCities',
+                                 {'country_id': 1,
+                                  'q': answer,
+                                  'need_all': 1,
+                                  'count': 1000
+                                  }
+                                 )
+        try:
+            cities = cities['items']
+        except KeyError:
+            return []
+
+        for i in cities:
+            if i["title"] == answer.capitalize():
+                city_id = i["id"]
+            return city_id
 
     def get_photos(self, user_id):
         photos = self.api.method('photos.get',
